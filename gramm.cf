@@ -1,0 +1,90 @@
+comment "//";
+comment "(*" "*)";
+
+separator nonempty Declaration "" ;
+separator FuncParam "," ;
+separator Expr "," ;
+separator nonempty FieldDecl "" ;
+terminator TypeIdent "," ;
+separator Stmt "" ;
+
+DProg. Prog ::= [Declaration];
+DFunc. Declaration ::= FuncDecl;
+DVarDecl. Declaration ::= VarDecl;
+DStructDecl. Declaration ::= "struct" Ident "{" [FieldDecl] "}"; 
+
+SFuncDecl. FuncDecl ::= TypeIdent Ident "(" [FuncParam] ")" "{" [Stmt] "}";
+
+SFieldDecl. FieldDecl ::= TypeIdent Ident ";";
+TInt. TypeIdent ::= "int";
+TBool. TypeIdent ::= "bool";
+TChar. TypeIdent ::= "char";
+TString. TypeIdent ::= "string";
+TStruct. TypeIdent ::= Ident;
+TFunc. TypeIdent ::= "Func" "<" [TypeIdent] TypeIdent ">";
+
+TArray. TypeIdent ::= TypeIdent "[" "]";
+
+SFuncParam. FuncParam ::= Ref TypeIdent Ident;
+SRef. Ref ::= "ref";
+SNRef. Ref ::= ; 
+
+SVarDecl. VarDecl ::= TypeIdent Ident InitExpr ";";
+ENonInit. InitExpr ::= ;
+EValInit. InitExpr ::= "=" Expr;
+
+SVarDeclS. Stmt ::= VarDecl;
+SValAssign. Stmt ::= BindExpr "=" Expr ";";
+
+SWhileS. Stmt ::= "while" "(" Expr ")" "{" [Stmt] "}";
+SForS. Stmt ::= "for" "(" ForInit Expr ";" BindExpr "=" Expr ")" "{" [Stmt] "}";
+SIfS. Stmt ::= "if" "(" Expr ")" "{" [Stmt] "}" ElseStmt;
+SElse. ElseStmt ::= "else" "{" [Stmt] "}" ;
+SElseEmpty. ElseStmt ::= ;
+SFuncInvS. Stmt ::= FuncInvoke ";";
+SReturnExpr. Stmt ::= "return" Expr ";";
+SReturn. Stmt ::= "return" ";" ;
+SBreak. Stmt ::= "break" ";";
+SContinue. Stmt ::= "continue" ";"; 
+
+EBVar. BindExpr ::= Ident;
+EFldAccs. BindExpr ::= BindExpr "." Ident;
+EArrAccs. BindExpr ::= BindExpr "[" Expr "]";
+EBEnd. EBCont ::= ;
+
+SForInit. ForInit ::= VarDecl;
+SSkip. ForInit ::= ";";
+
+EAdd. Expr ::= Expr "+" Expr1;
+ESub. Expr ::= Expr "-" Expr1;
+EOr. Expr ::= Expr "||" Expr1;
+_. Expr ::= Expr1;
+
+EMul. Expr1 ::= Expr1 "*" Expr2;
+EDiv. Expr1 ::= Expr1 "/" Expr2;
+EMod. Expr1 ::= Expr1 "%" Expr2;
+EAnd. Expr1 ::= Expr1 "&&" Expr2;
+_. Expr1 ::= Expr2; 
+
+EEq. Expr2 ::= Expr2 "==" Expr3;
+ENeq. Expr2 ::= Expr2 "!=" Expr3;
+ELt. Expr2 ::= Expr2 "<" Expr3;
+EGt. Expr2 ::= Expr2 ">" Expr3;
+ELEt. Expr2 ::= Expr2 "<=" Expr3;
+EGEt. Expr2 ::= Expr2 ">=" Expr3;
+_. Expr2 ::= Expr3;
+
+EBNeg. Expr3 ::= "!" Expr3;
+_. Expr3 ::= Expr4;
+
+EBindEx. Expr4 ::= BindExpr;
+EInt. Expr4 ::= Integer;
+EChar. Expr4 ::= Char;
+EString. Expr4 ::= String;
+ETrue. Expr4 ::= "true";
+EFalse. Expr4 ::= "false";
+_. Expr4 ::= "(" Expr ")";
+
+EArrCr. Expr4 ::= TypeIdent "[" Expr "]";
+EFuncInvoke. Expr4 ::= FuncInvoke;
+FFuncInvoke. FuncInvoke ::= Ident "(" [Expr] ")";
