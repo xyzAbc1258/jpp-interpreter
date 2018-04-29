@@ -1,0 +1,3 @@
+struct sample{
+	int string;
+}

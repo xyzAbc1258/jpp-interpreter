@@ -6,6 +6,7 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.Identity
 import Data.Functor
+import Data.List
 import qualified Absgramm as G
 import qualified Data.Map as M
 
@@ -15,16 +16,14 @@ getDefVal d = getDefaultVal <$> convertType d
 expectValue::(Eq a, Show a) => TypeChecker a -> a -> TypeChecker()
 expectValue reader val = do
 	rval <- reader
-	case rval == val of
-		True -> return ()
-		False -> throwError $ "Expected type '" ++ show val ++ "', given '" ++ show rval ++ "'"
+	when (rval /= val) $
+	 	throwError $ "Expected type '" ++ show val ++ "', given '" ++ show rval ++ "'"
 
 matchType:: (a -> TypeChecker Type) -> a -> a -> [(Type, Type, Type)] -> TypeChecker Type
 matchType f a1 a2 triples = do
 	t1 <- f a1
 	t2 <- f a2
-	let ok = filter (\(a,b,c) -> a == t1 && b == t2) triples
-	case ok of
+	case filter (\(a,b,_) -> a == t1 && b == t2) triples of
 		(_,_,r):_ -> return r
 		_ -> throwError $ "Couldnt deduce type in " ++ show t1 ++ " ," ++ show t2 
 
@@ -35,31 +34,33 @@ checkTypeProg::G.Prog -> TypeChecker ()
 checkTypeProg (G.DProg decs) = checkTypeDecs decs
 	
 checkTypeDecs::[G.Declaration] -> TypeChecker ()
-checkTypeDecs ((G.DFunc fDecl@(G.SFuncDecl retType (G.Ident idt) params s)):xa) = do
+checkTypeDecs (G.DFunc fDecl@(G.SFuncDecl retType (G.Ident idt) params s):xa) = do
 	identifierInUse idt
 	nRet <- convertType retType
 	let retVal = getDefaultVal nRet
-	nArgs <- convertListType $ map (\(G.SFuncParam _ t _) -> t) params
+	nArgs <- convertListType (map (\(G.SFuncParam _ t _) -> t) params) `catchError` 
+		(\e -> throwError $ "Error in param list of function '" ++ idt ++ "'. " ++ e) 
 	let decFunc = declareFunc idt nArgs nRet (const retVal)
 	decParamswo <- decParam params 
-	let decParams = decParamswo . (declareVar "$ret" $ getDefaultVal nRet)
-	local (decFunc . decParams) $ checkTypeStmt s
+	let decParams = decParamswo . declareVar "$ret" retVal
+	catchError (local (decFunc . decParams) $ checkTypeStmt s)
+		(\e -> throwError $ "Error in function '" ++ idt ++ "' :" ++ e)
 	local decFunc $ checkTypeDecs xa
-	where decParam (a:xa) = liftM2 (.) (toDecVar a) (decParam xa)
-	      decParam [] = return id
+	where decParam = foldr (liftM2 (.) . toDecVar) (return id)
 	      toDecVar (G.SFuncParam _ t (G.Ident idt)) = declareVar idt <$> getDefVal t
 	
-checkTypeDecs ((G.DVarDecl vDecl@(G.SVarDecl typ (G.Ident id) _)):xa) = do
+checkTypeDecs (G.DVarDecl vDecl@(G.SVarDecl typ (G.Ident id) _) :xa) = do
 	checkTypeVarDecl vDecl
 	val <- getDefVal typ
 	local (declareVar id val) $ checkTypeDecs xa
 	
-checkTypeDecs ((G.DStructDecl (G.Ident ident) fields):xa) = do
+checkTypeDecs (G.DStructDecl (G.Ident ident) fields :xa) = do
 	identifierInUse ident
-	checkTypeFieldDecl fields
+	checkTypeFieldDecl fields `catchError` 
+		(\e -> throwError $ "Error in struct delcaration '" ++ ident ++"'. " ++ e) 
 	nfields <- convert fields M.empty
-	local (declareStruct ident nfields )  $ checkTypeDecs xa
-	where convert ((G.SFieldDecl ftype (G.Ident fname)):xs) m = do
+	local (declareStruct ident nfields ) $ checkTypeDecs xa
+	where convert (G.SFieldDecl ftype (G.Ident fname) :xs) m = do
 			nType <- convertType ftype
 			convert xs (M.insert fname nType m)
 	      convert [] m = return m
@@ -67,12 +68,11 @@ checkTypeDecs ((G.DStructDecl (G.Ident ident) fields):xa) = do
 checkTypeDecs [] = return ()
 
 checkTypeFieldDecl::[G.FieldDecl] -> TypeChecker ()
-checkTypeFieldDecl ((G.SFieldDecl typ _):xa) = do
-	convertType typ
-	checkTypeFieldDecl xa
-checkTypeFieldDecl [] = return ()
+checkTypeFieldDecl list = do
+	convertListType $ map (\(G.SFieldDecl t _) -> t) list
+	let dist = length $ nub $ map (\(G.SFieldDecl _ n) -> n) list
+	when (length list /= dist) $ throwError "Names of fields have to be unique."
 
--- TODO
 checkTypeVarDecl::G.VarDecl -> TypeChecker Type
 checkTypeVarDecl (G.SVarDecl typ (G.Ident ident) (G.EValInit expr)) = do
 	identifierInUse ident 
@@ -87,47 +87,46 @@ checkTypeVarDecl (G.SVarDecl typ (G.Ident ident) G.ENonInit) = do
 checkTypeStmt::[G.Stmt] -> TypeChecker ()
 checkTypeStmt [] = return ()
 
-checkTypeStmt ((G.SVarDeclS decl@(G.SVarDecl typ (G.Ident ident) _)):xa)= do
+checkTypeStmt (G.SVarDeclS decl@(G.SVarDecl typ (G.Ident ident) _) :xa)= do
 	checkTypeVarDecl decl
 	val <- getDefVal typ
 	local (declareVar ident val) $ checkTypeStmt xa
 
-checkTypeStmt ((G.SValAssign bindExpr expr):xa)= do
+checkTypeStmt (G.SValAssign bindExpr expr :xa)= do
 	bType <- checkTypeBindExpr bindExpr
 	checkTypeExpr expr `expectValue` bType
 	checkTypeStmt xa
 
-checkTypeStmt ((G.SWhileS expr stmts):xa)= do
+checkTypeStmt (G.SWhileS expr stmts :xa)= do
 	checkTypeExpr expr `expectValue` TBool
 	local id $ checkTypeStmt stmts
 	checkTypeStmt xa
 
-checkTypeStmt ((G.SForS (G.SForInit decl@(G.SVarDecl typ (G.Ident ident) _)) expr1 bindExpr expr2 stmts):xa) = do
+checkTypeStmt (G.SForS (G.SForInit decl@(G.SVarDecl typ (G.Ident ident) _)) expr1 bindExpr expr2 stmts :xa) = do
 	checkTypeVarDecl decl
 	val <- getDefVal typ
-	local (declareVar ident val) $ checkTypeStmt $ (G.SForS G.SSkip expr1 bindExpr expr2 stmts):[]
+	local (declareVar ident val) $ checkTypeStmt [G.SForS G.SSkip expr1 bindExpr expr2 stmts]
 	checkTypeStmt xa
 	
-
-checkTypeStmt ((G.SForS G.SSkip expr1 bindExpr expr2 stmts):xa) = do
+checkTypeStmt (G.SForS G.SSkip expr1 bindExpr expr2 stmts :xa) = do
 	checkTypeExpr expr1 `expectValue` TBool
 	bType <- checkTypeBindExpr bindExpr
 	checkTypeExpr expr2 `expectValue` bType
 	checkTypeStmt stmts
 	checkTypeStmt xa
 
-checkTypeStmt ((G.SIfS expr stmts elseStmt):xa)= do
+checkTypeStmt (G.SIfS expr stmts elseStmt :xa)= do
 	checkTypeExpr expr `expectValue` TBool
 	local id checkTypeStmt stmts
 	case elseStmt of
 		G.SElseEmpty -> checkTypeStmt xa
 		G.SElse stmts -> checkTypeStmt stmts >> checkTypeStmt xa
 
-checkTypeStmt ((G.SFuncInvS funcInvoke):xa)= do
+checkTypeStmt (G.SFuncInvS funcInvoke :xa)= do
 	checkTypeExpr (G.EFuncInvoke funcInvoke)
 	checkTypeStmt xa
 
-checkTypeStmt ((G.SReturnExpr expr):xa)= do
+checkTypeStmt (G.SReturnExpr expr :xa)= do
 	ret <- getVar "$ret"
 	let retType = getValType ret
 	checkTypeExpr expr `expectValue` retType
@@ -138,7 +137,7 @@ checkTypeStmt (G.SReturn :xa)= do
 	let retType = getValType ret
 	case retType of
 		TVoid -> checkTypeStmt xa
-		_ -> throwError "This function returns type void"
+		_ -> throwError $ "This function returns type " ++ show retType
 
 checkTypeStmt (G.SBreak:xa)= return ()
 checkTypeStmt (G.SContinue:xa)= return ()
@@ -215,7 +214,8 @@ checkTypeExpr (G.EArrCr typ sizeExp) = do
 
 checkTypeExpr (G.EFuncInvoke (G.FFuncInvoke (G.Ident ident) exprs)) = do
 	(TFunc args ret) <- getFuncType ident
-	checkArgsTypes args exprs
+	checkArgsTypes args exprs `catchError` 
+		(\e -> throwError $ "Error in invocation of function '" ++ ident ++ "'. " ++ e)
 	return ret
 	where checkArgsTypes [] [] = return ()
 	      checkArgsTypes (t:tx) (a:xa) = checkTypeExpr a `expectValue` t >> checkArgsTypes tx xa
