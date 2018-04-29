@@ -20,10 +20,11 @@ TInt. TypeIdent ::= "int";
 TBool. TypeIdent ::= "bool";
 TChar. TypeIdent ::= "char";
 TString. TypeIdent ::= "string";
+TVoid. TypeIdent ::= "void";
 TStruct. TypeIdent ::= Ident;
 TFunc. TypeIdent ::= "Func" "<" [TypeIdent] TypeIdent ">";
 
-TArray. TypeIdent ::= TypeIdent "[" "]";
+TArray. TypeIdent ::= "Array" "<" TypeIdent ">";
 
 SFuncParam. FuncParam ::= Ref TypeIdent Ident;
 SRef. Ref ::= "ref";
@@ -50,7 +51,6 @@ SContinue. Stmt ::= "continue" ";";
 EBVar. BindExpr ::= Ident;
 EFldAccs. BindExpr ::= BindExpr "." Ident;
 EArrAccs. BindExpr ::= BindExpr "[" Expr "]";
-EBEnd. EBCont ::= ;
 
 SForInit. ForInit ::= VarDecl;
 SSkip. ForInit ::= ";";
@@ -85,6 +85,6 @@ ETrue. Expr4 ::= "true";
 EFalse. Expr4 ::= "false";
 _. Expr4 ::= "(" Expr ")";
 
-EArrCr. Expr4 ::= TypeIdent "[" Expr "]";
+EArrCr. Expr4 ::= "new" TypeIdent "[" Expr "]";
 EFuncInvoke. Expr4 ::= FuncInvoke;
 FFuncInvoke. FuncInvoke ::= Ident "(" [Expr] ")";

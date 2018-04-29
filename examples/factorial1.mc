@@ -1,10 +1,11 @@
 struct error{
- int line;
- string msg;
+	int id;
+	Array<string> strings;
 }
 
- int fact_iter(int i){
-  error e;
+int fact_iter(int i){
+  Array<error> e = new error[12];
+  e[1].id = 12;
   if (i <= 1) { return 1;}
   int result = 1;
   for (int l = 2; l <= i; l = l+1){
@@ -15,8 +16,8 @@ struct error{
 
 int v = 0;
 
- int fact_iter2(int i){
-  int result;
+int fact_iter2(int i){
+  int result = v;
   while(true) {
     if(i < 2){ return result; }
     result = result * i;
@@ -26,7 +27,7 @@ int v = 0;
 
 int fact_arr(int i){
   if(i < 0) {return 1;}
-  int[] res = int[i + 1];
+  Array<int> res = new int[i + 1];
   res[0] = 1;
   for(int l = 1; l <= i; l = l +1){
     res[l] = res[l - 1] * l;
@@ -39,18 +40,22 @@ int fact_arr(int i){
   return i * fact_rec(i - 1);
 }
 
- int fact_gen(Func<int, int> f, int i){
+int fact_gen(Func<int, int> f, int i){
   if(i <= 1){ return 1;}
   return i * f(i -1);
 }
 
- void assert_correct(){
+void assert(bool i){
+
+}
+
+void assert_correct(){
 	assert (fact_iter(5) == 120);
 	assert (fact_rec(6) == 720);
 	assert (fact_gen(fact_iter, 6) == 720);
 }
 
- void do_nothing(){
+void do_nothing(){
   while(true){
     assert_correct();
   }

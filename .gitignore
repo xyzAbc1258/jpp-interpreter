@@ -1,0 +1,13 @@
+.\stack-work
+.\vscode
+*.o
+*.hi
+*.aux
+*.dvi
+*.log
+*.tex
+*.txt
+info.t
+*.bak
+*.ps
+Testgramm
