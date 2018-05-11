@@ -26,9 +26,7 @@ TFunc. TypeIdent ::= "Func" "<" [TypeIdent] TypeIdent ">";
 TPtr. TypeIdent ::= "Ptr" "<" TypeIdent ">";
 TArray. TypeIdent ::= "Array" "<" TypeIdent ">";
 
-SFuncParam. FuncParam ::= Ref TypeIdent Ident;
-SRef. Ref ::= "ref";
-SNRef. Ref ::= ; 
+SFuncParam. FuncParam ::=TypeIdent Ident;
 
 SVarDecl. VarDecl ::= TypeIdent Ident InitExpr ";";
 ENonInit. InitExpr ::= ;

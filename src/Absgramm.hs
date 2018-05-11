@@ -35,12 +35,7 @@ data TypeIdent =
   deriving (Eq,Ord,Show)
 
 data FuncParam =
-   SFuncParam Ref TypeIdent Ident
-  deriving (Eq,Ord,Show)
-
-data Ref =
-   SRef
- | SNRef
+   SFuncParam TypeIdent Ident
   deriving (Eq,Ord,Show)
 
 data VarDecl =

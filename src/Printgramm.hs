@@ -129,18 +129,12 @@ instance Print TypeIdent where
 
 instance Print FuncParam where
   prt i e = case e of
-   SFuncParam ref typeident id -> prPrec i 0 (concatD [prt 0 ref , prt 0 typeident , prt 0 id])
+   SFuncParam typeident id -> prPrec i 0 (concatD [prt 0 typeident , prt 0 id])
 
   prtList es = case es of
    [] -> (concatD [])
    [x] -> (concatD [prt 0 x])
    x:xs -> (concatD [prt 0 x , doc (showString ",") , prt 0 xs])
-
-instance Print Ref where
-  prt i e = case e of
-   SRef  -> prPrec i 0 (concatD [doc (showString "ref")])
-   SNRef  -> prPrec i 0 (concatD [])
-
 
 instance Print VarDecl where
   prt i e = case e of

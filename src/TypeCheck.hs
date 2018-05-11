@@ -45,7 +45,7 @@ checkTypeDecs (G.DFunc fDecl@(G.SFuncDecl retType (G.Ident idt) params s):xa) = 
     identifierInUse idt
     nRet <- convertType retType
     retVal <- getDefVal retType
-    nArgs <- convertListType (map (\(G.SFuncParam _ t _) -> t) params) `catchError` 
+    nArgs <- convertListType (map (\(G.SFuncParam t _) -> t) params) `catchError` 
         (\e -> throwError $ "Error in param list of function '" ++ idt ++ "'. " ++ e) 
     let decFunc = declareFunc idt nArgs nRet (Fun $ const $ return retVal)
     decParamswo <- decParam params 
@@ -54,7 +54,7 @@ checkTypeDecs (G.DFunc fDecl@(G.SFuncDecl retType (G.Ident idt) params s):xa) = 
         (\e -> throwError $ "Error in function '" ++ idt ++ "' :" ++ e)
     local decFunc $ checkTypeDecs xa
     where decParam = foldr (liftM2 (.) . toDecVar) (return id)
-          toDecVar (G.SFuncParam _ t (G.Ident idt)) = declareVar idt <$> getDefVal t
+          toDecVar (G.SFuncParam t (G.Ident idt)) = declareVar idt <$> getDefVal t
     
 checkTypeDecs (G.DVarDecl vDecl@(G.SVarDecl typ (G.Ident id) _) :xa) = do
     checkTypeVarDecl vDecl

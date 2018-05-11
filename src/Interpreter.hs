@@ -52,8 +52,8 @@ safeDA m k =
 fixFunc::G.FuncDecl ->([Value] -> StateEnv Value) -> [Value] -> StateEnv Value
 fixFunc d@(G.SFuncDecl retT (G.Ident idt) params body) toFix args = do
     nRet <- convertTypeLocal retT
-    nArgs <- mapM (\(G.SFuncParam _ t _) -> (convertTypeLocal t)) params    
-    let pairs = Prelude.map (\(G.SFuncParam _ _ (G.Ident pN), v) -> (pN,v)) $ zip params args
+    nArgs <- mapM (\(G.SFuncParam t _) -> (convertTypeLocal t)) params    
+    let pairs = Prelude.map (\(G.SFuncParam _ (G.Ident pN), v) -> (pN,v)) $ zip params args
     let mods = Prelude.map (\(p,v) e -> let (nv,ne) = deepCopy v e in declareVar p nv ne) pairs
     let modAggr = Prelude.foldl (.) id mods
     (l,oldd,dec,funcs,loc) <- get
@@ -69,7 +69,7 @@ fixFunc d@(G.SFuncDecl retT (G.Ident idt) params body) toFix args = do
 interpretDecl::G.Declaration -> Interpreter () ()
 interpretDecl (G.DFunc d@(G.SFuncDecl retT (G.Ident idt) params body)) = do
     nRet <- convertTypeLocal retT
-    nArgs <- mapM (\(G.SFuncParam _ t _) -> convertTypeLocal t) params
+    nArgs <- mapM (\(G.SFuncParam t _) -> convertTypeLocal t) params
     modify (declareFunc idt nArgs nRet (Fun $ fix $ fixFunc d))
 
 interpretDecl (G.DVarDecl (G.SVarDecl t (G.Ident id) initVal)) = do

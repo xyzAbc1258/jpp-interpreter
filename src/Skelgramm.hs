@@ -51,13 +51,7 @@ transTypeIdent x = case x of
 
 transFuncParam :: FuncParam -> Result
 transFuncParam x = case x of
-  SFuncParam ref typeident id  -> failure x
-
-
-transRef :: Ref -> Result
-transRef x = case x of
-  SRef  -> failure x
-  SNRef  -> failure x
+  SFuncParam typeident id  -> failure x
 
 
 transVarDecl :: VarDecl -> Result
