@@ -1,7 +1,10 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Common(Type(TBool, TInt, TString, TChar, TArray, TStruct, TVoid, TFunc), 
-	Location, Func, Value(VBool, VArray, VChar, VFunc, VInt, VString, VStruct, VVoid), Env,
+	Location, Func(Fun), Value(VBool, VArray, VChar, VFunc, VInt, VString, VStruct, VVoid), Env,
 	convertType, getDefaultVal, getValType, declareFunc, declareStruct, declareVar, getVar, setVar
-	,TypeChecker, convertListType, getFuncType, identifierInUse, initialEnv)
+	,TypeChecker, convertListType, getFuncType, identifierInUse, initialEnv, Interpreter, getVarLocation,
+	setValLoc, StateEnv)
 where
 
 import qualified Data.Map as M
@@ -9,8 +12,16 @@ import qualified Absgramm as G
 
 import Control.Monad.Reader
 import Control.Monad.Except
+import Control.Monad.Cont
 import Data.Functor
+import Control.Monad.State
+
+type Interpreter r = ContT r StateEnv
 type TypeChecker = ReaderT Env (Except String)
+type StateEnv = StateT Env TypeChecker
+
+
+type FuncDefinition = (String, [Type], Type, Func)
 
 data Type = TBool
 	| TInt
@@ -20,10 +31,19 @@ data Type = TBool
 	| TStruct String (M.Map String Type)
 	| TVoid
 	| TFunc [Type] Type
-	deriving(Show, Eq)
+	deriving(Eq)
+
+instance Show Type where
+	show TInt = "int"
+	show TString = "string"
+	show TChar = "char"
+	show (TArray inner) = "Array<" ++ show inner ++ ">"
+	show (TStruct name _) = name
+	show TVoid = "void"
+	show (TFunc a b) = "(" ++ (foldl (\a b -> a ++ "," ++ b) ""  $ map show a) ++ ") -> " ++ show b
 
 type Location = Integer
-type Func = [Value] -> Value
+newtype Func = Fun ([Value] -> StateEnv Value)
 
 data Value = VBool Bool
 	| VInt Integer
@@ -34,6 +54,15 @@ data Value = VBool Bool
 	| VVoid
 	| VFunc Type Func
 
+instance Show Value where
+	show (VBool b) = show b
+	show (VInt i) = show i
+	show (VString s) = "'" ++ s ++ "'"
+	show (VArray _ m) = show m
+	show (VStruct _ m) = show m
+	show VVoid = "void"
+	show (VFunc t _) = show t
+
 
 type Env = (M.Map String Location, -- zmienne lokacje
 	M.Map Location Value, -- lokacje wartości
@@ -41,14 +70,20 @@ type Env = (M.Map String Location, -- zmienne lokacje
 	M.Map String Func, -- funkcje 
 	Location) -- obecna lokalizacja
 
-type Cont = Env -> Env
-	
+emptyEnv:: Env
+emptyEnv = (M.empty, M.empty, M.empty, M.empty, 0)
+
 initialEnv::Env
-initialEnv = (M.empty, M.empty, M.empty, M.empty, 0)
+initialEnv = foldl (\e (n,a,r,f) -> declareFunc n a r f e) emptyEnv stdFuncs
+
+alloc::Value -> Env ->(Location, Env)
+alloc val (l,v,d,f,loc) = 
+	(loc, (l,M.insert loc val v,d,f,loc +1))
 
 declareVar::String->Value->Env->Env
-declareVar ident val (l,v,d,f,loc) = 
-	(M.insert ident loc l, M.insert loc val v, d, f, loc +1)
+declareVar ident val e = 
+	let (nl, (l,v,d,f,loc)) = alloc val e in
+	(M.insert ident nl l, v, d, f, loc)
 
 identifierInUse::String ->TypeChecker ()
 identifierInUse ident = do
@@ -58,6 +93,11 @@ identifierInUse ident = do
 					   Nothing -> return ()
 					   _ -> throwError $ "Identifier '" ++ ident ++ "' is already in use"
 		_ -> throwError $ "Identifier '" ++ ident ++ "' is already in use"
+
+getVarLocation::String->TypeChecker Location
+getVarLocation ident = do
+	(l,_,_,_,_) <- ask
+	return $ l M.! ident
 
 getVar::String->TypeChecker Value
 getVar ident = do
@@ -76,11 +116,14 @@ getFuncType ident = do
 		_ -> case M.lookup ident f of
 				 Just a -> return a
 				 _ -> throwError $ "Function '" ++ ident ++ "' is not defined" 
-	 
+
+setValLoc::Location->Value->Env->Env
+setValLoc local val (l,v,d,f,loc) = 
+	(l, M.insert local val v, d, f, loc)
 
 setVar::String->Value->Env->Env
-setVar ident val (l,v,d,f,loc) = 
-	(l, M.insert (l M.! ident) val v,d,f,loc)
+setVar ident val e@(l,_,_,_,_) = 
+	setValLoc (l M.! ident) val e
 
 declareStruct::String-> M.Map String Type -> Env -> Env
 declareStruct sName map (l,v,d,f,loc) = 
@@ -110,21 +153,24 @@ convertType (G.TFunc args ret) = do
 convertType (G.TArray innerType) = TArray <$> convertType innerType
 
 convertListType::[G.TypeIdent] -> TypeChecker [Type]
-convertListType (a:xa) = do
-	t <- convertType a
-	tail <- convertListType xa
-	return $ t:tail
-convertListType [] = return []
+convertListType = mapM convertType
 
-getDefaultVal::Type -> Value
-getDefaultVal TBool = VBool False
-getDefaultVal TInt = VInt 0
-getDefaultVal TString = VString ""
-getDefaultVal TChar = VChar '\0'
-getDefaultVal (TArray typ) = VArray typ M.empty 
-getDefaultVal typ@(TStruct _ _) = VStruct typ M.empty
-getDefaultVal TVoid = VVoid
-getDefaultVal func@(TFunc _ ret) = VFunc func (\v -> getDefaultVal ret) 
+getDefaultVal::Type -> StateEnv Value
+getDefaultVal TBool = return $ VBool False
+getDefaultVal TInt = return $ VInt 0
+getDefaultVal TString = return $ VString ""
+getDefaultVal TChar = return $ VChar '\0'
+getDefaultVal (TArray typ) = return $ VArray typ M.empty 
+getDefaultVal typ@(TStruct _ mapFlds) = do
+	let mapF (n,t) = getDefaultVal t >>= (\v-> state (alloc v)) >>= (\l -> return (n,l))
+	list <- mapM mapF (M.toList mapFlds) 
+	let mapped :: M.Map String Location = M.fromList list 
+	let val = VStruct typ mapped
+	modify (snd . (alloc val))
+	return val
+getDefaultVal TVoid = return VVoid
+getDefaultVal func@(TFunc _ ret) = 
+	return $ VFunc func $ Fun (\v -> getDefaultVal ret) 
 
 getValType::Value -> Type
 getValType (VBool _) = TBool
@@ -135,3 +181,11 @@ getValType (VArray typ _) = TArray typ
 getValType (VStruct typ _) = typ
 getValType VVoid = TVoid
 getValType (VFunc typ _) = typ
+
+
+stdFuncs::[FuncDefinition]
+stdFuncs = [printStr, printInt]
+
+printStr = ("printStr", [TString], TVoid, Fun $ \[x] -> liftIO (print x) >> (return VVoid))
+
+printInt = ("printInt", [TInt], TVoid, Fun $ \[x] -> liftIO (print x) >> (return VVoid))

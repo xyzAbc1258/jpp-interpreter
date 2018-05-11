@@ -4,6 +4,7 @@ import Prelude
 import Common
 import Control.Monad.Except
 import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Identity
 import Data.Functor
 import Data.List
@@ -11,7 +12,10 @@ import qualified Absgramm as G
 import qualified Data.Map as M
 
 getDefVal::G.TypeIdent -> TypeChecker Value
-getDefVal d = getDefaultVal <$> convertType d
+getDefVal d = do 
+	nt <- convertType d
+	s <- ask
+	evalStateT (getDefaultVal nt) s
 
 expectValue::(Eq a, Show a) => TypeChecker a -> a -> TypeChecker()
 expectValue reader val = do
@@ -37,10 +41,10 @@ checkTypeDecs::[G.Declaration] -> TypeChecker ()
 checkTypeDecs (G.DFunc fDecl@(G.SFuncDecl retType (G.Ident idt) params s):xa) = do
 	identifierInUse idt
 	nRet <- convertType retType
-	let retVal = getDefaultVal nRet
+	retVal <- getDefVal retType
 	nArgs <- convertListType (map (\(G.SFuncParam _ t _) -> t) params) `catchError` 
 		(\e -> throwError $ "Error in param list of function '" ++ idt ++ "'. " ++ e) 
-	let decFunc = declareFunc idt nArgs nRet (const retVal)
+	let decFunc = declareFunc idt nArgs nRet (Fun $ const $ return retVal)
 	decParamswo <- decParam params 
 	let decParams = decParamswo . declareVar "$ret" retVal
 	catchError (local (decFunc . decParams) $ checkTypeStmt s)
