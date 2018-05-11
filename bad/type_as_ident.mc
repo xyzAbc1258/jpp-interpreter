@@ -1,3 +1,0 @@
-struct sample{
-	int string;
-}

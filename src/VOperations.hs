@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module VOperations(vAdd
 , vSub
 , vMul
@@ -13,6 +14,7 @@ module VOperations(vAdd
 , vGEt)
 where
 
+import Control.Monad.Reader
 import Prelude hiding (negate)
 import Common
 import Data.Map
@@ -41,22 +43,35 @@ vOr (VBool a) (VBool b) = VBool $ a || b
 vAnd::BinVOp
 vAnd (VBool a) (VBool b) = VBool $ a && b
 
-type BinVOpReader = Value -> Value -> TypeChecker Value
-
+retBool::(Monad m) => Bool -> m Value
 retBool = return . VBool
 
-vEEq::BinVOpReader
+vEEq::(MonadReader Env m) => Value -> Value -> m Value
 vEEq (VInt a) (VInt b) = retBool $ a == b
 vEEq (VString a) (VString b) = retBool $ a == b
 vEEq (VBool a) (VBool b) = retBool $ a == b
 vEEq (VChar a) (VChar b) = retBool $ a == b
-vEEq (VArray t1 a) (VArray t2 b) | t1 == t2 = retBool $ size a == size b
-vEEq (VStruct t1 a) (VStruct t2 b) | t1 == t2 = retBool $ a == b
-vEEq (VFunc t1 a) (VFunc t2 b) | t1 == t2  = retBool $ False
+
+vEEq (VArray t1 a) (VArray t2 b) | t1 == t2 =
+    if size a == size b then vCompDicts a b else retBool False
+
+vEEq (VStruct t1 a) (VStruct t2 b) | t1 == t2 = 
+    vCompDicts a b
+
+vCompDicts::(MonadReader Env m, Ord a, Eq a) => Map a Location -> Map a Location -> m Value
+vCompDicts a b = do
+    (_,vl,_,_,_) <- ask
+    let akeys= keys a
+    let avals = Prelude.map (\k -> vl! (a!k)) akeys
+    let bvals = Prelude.map (\k -> vl! (b!k)) akeys
+    let pairs = zip avals bvals
+    vbools <- mapM (uncurry vEEq) pairs 
+    let bools = Prelude.map (\(VBool v) -> v) vbools
+    retBool $ and bools
 
 negate ret (VBool v) = ret $ VBool $ not v
 
-vNEq::BinVOpReader
+vNEq::(MonadReader Env m) => Value -> Value -> m Value
 vNEq a b = vEEq a b >>= (negate return)
 vLt::BinVOp
 vLt (VInt a) (VInt b) = VBool $ a < b

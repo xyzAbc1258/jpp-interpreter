@@ -2,7 +2,7 @@
 module Main where
 
 
-  import System.IO ( stdin, hGetContents )
+  import System.IO ( stdin, hGetContents, stderr, hPutStrLn )
   import System.Environment ( getArgs, getProgName )
   
   import Lexgramm
@@ -12,8 +12,9 @@ module Main where
   import Absgramm
   import TypeCheck
   import Common
-  
-  
+  import qualified Interpreter as I
+  import Control.Monad
+
   import ErrM
   
   type ParseFun a = [Token] -> Err a
@@ -21,9 +22,11 @@ module Main where
   myLLexer = myLexer
   
   type Verbosity = Int
+
+  putStrLnErr = hPutStrLn stderr
   
   putStrV :: Verbosity -> String -> IO ()
-  putStrV v s = if v > 1 then putStrLn s else return ()
+  putStrV v s = when (v > 1) $ putStrLn s
   
   runFile :: (Print a, Show a) => Verbosity -> ParseFun a -> FilePath -> IO ()
   runFile v p f = putStrLn f >> readFile f >>= run v p
@@ -42,10 +45,26 @@ module Main where
       cont <- putStrLn f >> readFile f  
       let ts = myLLexer cont
       case p ts of
-        Ok tree -> case checkType tree initialEnv of
-                       Left e -> putStrLn e
-                       _ -> return ()
+        Ok tree -> do
+                    r <- checkType tree initialEnv
+                    case r of
+                        Left e -> putStrLn e
+                        _ -> return ()
         _ -> putStrLn "error parsing"
+  
+  
+  interpret::ParseFun Prog -> FilePath -> IO()
+  interpret p f = do
+    checkTypesP p f
+    cont <- putStrLn f >> readFile f  
+    let ts = myLLexer cont
+    case p ts of
+        Ok tree -> do 
+                    r <- I.interpret tree initialEnv
+                    case r of 
+                      Left e -> putStrLnErr e
+                      _ -> return ()
+        _ -> return ()
   
   showTree :: (Show a, Print a) => Int -> a -> IO ()
   showTree v tree
@@ -53,12 +72,16 @@ module Main where
         putStrV v $ "\n[Abstract Syntax]\n\n" ++ show tree
         putStrV v $ "\n[Linearized tree]\n\n" ++ printTree tree
   
+
+  
+
   main :: IO ()
   main = do args <- getArgs
             case args of
               [] -> hGetContents stdin >>= run 2 pProg
               "-s":fs -> mapM_ (runFile 0 pProg) fs
               "-t":fs -> mapM_ (checkTypesP pProg) fs
+              "-i":fs -> mapM_ (interpret pProg) fs
               fs -> mapM_ (runFile 2 pProg) fs
   
   
