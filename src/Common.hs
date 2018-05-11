@@ -2,8 +2,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses#-}
 
-module Common(Type(TBool, TInt, TString, TChar, TArray, TStruct, TVoid, TFunc), 
-    Location, Func(Fun), Value(VBool, VArray, VChar, VFunc, VInt, VString, VStruct, VVoid), Env,
+module Common(Type(TBool, TInt, TString, TChar, TArray, TStruct, TVoid, TFunc, TPtr), 
+    Location, Func(Fun), Value(VBool, VArray, VChar, VFunc, VInt, VString, VStruct, VVoid, VPtr), Env,
     convertType, getDefaultVal, getValType, declareFunc, declareStruct, declareVar, getVar, setVar
     ,TypeChecker, convertListType, getFuncType, identifierInUse, initialEnv, Interpreter, getVarLocation,
     setValLoc, StateEnv, dump, declareVarLoc, alloc, deepCopy, isFunc)
@@ -115,6 +115,7 @@ convertType (G.TFunc args ret) = do
     return $ TFunc argst rtt
 
 convertType (G.TArray innerType) = TArray <$> convertType innerType
+convertType (G.TPtr inner) = TPtr <$> convertType inner
 
 convertListType::(MonadReader Env m, MonadError String m) => [G.TypeIdent] -> m [Type]
 convertListType = mapM convertType
@@ -132,5 +133,6 @@ getDefaultVal typ@(TStruct _ mapFlds) = do
     let val = VStruct typ mapped
     return val
 getDefaultVal TVoid = return VVoid
+getDefaultVal (TPtr t) = return $ VPtr t (negate 1)
 getDefaultVal func@(TFunc _ ret) = 
     return $ VFunc func $ Fun (\v -> getDefaultVal ret) 

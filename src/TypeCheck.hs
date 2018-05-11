@@ -229,6 +229,8 @@ checkTypeExpr (G.EBNeg e1) = do
 
 checkTypeExpr (G.EBindEx bindExpr) = checkTypeBindExpr bindExpr
 
+checkTypeExpr (G.ERef bindExpr) = TPtr <$> checkTypeBindExpr bindExpr
+
 checkTypeExpr (G.EInt _) = return TInt
 
 checkTypeExpr (G.EChar _) = return TChar
@@ -269,3 +271,9 @@ checkTypeBindExpr (G.EArrAccs bindExpr index) = do
     case t of 
         TArray inner -> checkTypeExpr index `expectValue` TInt >> return inner
         _ -> throwError "Type is not an array"
+
+checkTypeBindExpr (G.EDeref innerB) = do
+    t <- checkTypeBindExpr innerB
+    case t of
+        TPtr t -> return t
+        _ -> throwError "Dereferenced value has to be a pointer"

@@ -124,6 +124,11 @@ interpExpr (G.EArrCr t size) = do
     modify (const s)
     return $ VArray nt $ fromList l 
 
+interpExpr (G.ERef bindExpr) = do
+    loc <- interpBindExpr bindExpr
+    typ <- getValType <$> gets (\(_,d,_,_,_) -> d!loc)
+    return $ VPtr typ loc
+
 interpExpr (G.EFuncInvoke (G.FFuncInvoke (G.Ident id) args)) = do
     (VFunc _ (Fun f)) <- getVarLocal id
     margs <- mapM interpExpr args
@@ -152,6 +157,10 @@ interpBindExpr (G.EArrAccs inner index) = do
     (VArray _ v) <- interpExpr (G.EBindEx inner)
     (VInt inx) <- interpExpr index
     safeDA v inx
+
+interpBindExpr (G.EDeref bindExpr) = do
+    (VPtr _ l) <- interpExpr (G.EBindEx bindExpr)
+    return l
 
 interpStmts::[G.Stmt] -> Interpreter FlowType FlowType
 interpStmts l = mapM_ interpStmt l >> (return None)

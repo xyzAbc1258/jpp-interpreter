@@ -33,6 +33,7 @@ data Type = TBool
     | TStruct String (M.Map String Type)
     | TVoid
     | TFunc [Type] Type
+    | TPtr Type
     | TAll -- used only to simplified polymorphism
 
 instance Eq Type where
@@ -47,6 +48,7 @@ instance Eq Type where
     (TStruct n1 d1) == (TStruct n2 d2) = n1 == n2 && d1 == d2
     (TFunc a1 r1) == (TFunc a2 r2) = a1 == a2 && r1 == r2
     (TArray t1) == (TArray t2) = t1 == t2
+    (TPtr a) == (TPtr b) = a == b
     _ == _ = False
 
 isFunc::Type -> Bool
@@ -62,6 +64,7 @@ instance Show Type where
     show (TStruct name d) = name ++ " " ++ show d
     show TVoid = "void"
     show (TFunc a b) = "(" ++ foldl (\a b -> a ++ "," ++ b) ""  (map show a) ++ ") -> " ++ show b
+    show (TPtr a) = "Ptr<" ++ show a ++ ">"
     show TAll = "*"
 
 
@@ -73,6 +76,7 @@ data Value = VBool Bool
     | VStruct Type (M.Map String Location)
     | VVoid
     | VFunc Type Func
+    | VPtr Type Location
 
 instance Show Value where
     show (VBool b) = show b
@@ -83,6 +87,7 @@ instance Show Value where
     show (VStruct _ m) = show $ M.toList m
     show VVoid = "void"
     show (VFunc t _) = show t
+    show (VFunc t _) = show $ TPtr t
 
 print::Value -> String
 print (VBool b) = show b
@@ -93,6 +98,7 @@ print (VArray t _) = show t
 print (VStruct t _) = show t
 print VVoid = "void"
 print (VFunc t _) = show t
+print (VPtr t _) = show t
 
 
 getValType::Value -> Type
@@ -104,7 +110,7 @@ getValType (VArray typ _) = TArray typ
 getValType (VStruct typ _) = typ
 getValType VVoid = TVoid
 getValType (VFunc typ _) = typ
-
+getValType (VPtr t _) = TPtr t
 
 printLn::(Show a, MonadIO m) => a -> m()
 printLn a = liftIO $ Prelude.print a

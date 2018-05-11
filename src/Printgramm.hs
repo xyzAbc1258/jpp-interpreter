@@ -120,6 +120,7 @@ instance Print TypeIdent where
    TVoid  -> prPrec i 0 (concatD [doc (showString "void")])
    TStruct id -> prPrec i 0 (concatD [prt 0 id])
    TFunc typeidents typeident -> prPrec i 0 (concatD [doc (showString "Func") , doc (showString "<") , prt 0 typeidents , prt 0 typeident , doc (showString ">")])
+   TPtr typeident -> prPrec i 0 (concatD [doc (showString "Ptr") , doc (showString "<") , prt 0 typeident , doc (showString ">")])
    TArray typeident -> prPrec i 0 (concatD [doc (showString "Array") , doc (showString "<") , prt 0 typeident , doc (showString ">")])
 
   prtList es = case es of
@@ -177,9 +178,10 @@ instance Print ElseStmt where
 
 instance Print BindExpr where
   prt i e = case e of
-   EBVar id -> prPrec i 0 (concatD [prt 0 id])
-   EFldAccs bindexpr id -> prPrec i 0 (concatD [prt 0 bindexpr , doc (showString ".") , prt 0 id])
-   EArrAccs bindexpr expr -> prPrec i 0 (concatD [prt 0 bindexpr , doc (showString "[") , prt 0 expr , doc (showString "]")])
+   EDeref bindexpr -> prPrec i 0 (concatD [doc (showString "*") , prt 0 bindexpr])
+   EBVar id -> prPrec i 1 (concatD [prt 0 id])
+   EFldAccs bindexpr id -> prPrec i 1 (concatD [prt 1 bindexpr , doc (showString ".") , prt 0 id])
+   EArrAccs bindexpr expr -> prPrec i 1 (concatD [prt 1 bindexpr , doc (showString "[") , prt 0 expr , doc (showString "]")])
 
 
 instance Print ForInit where
@@ -205,6 +207,7 @@ instance Print Expr where
    EGEt expr0 expr -> prPrec i 2 (concatD [prt 2 expr0 , doc (showString ">=") , prt 3 expr])
    EBNeg expr -> prPrec i 3 (concatD [doc (showString "!") , prt 3 expr])
    EBindEx bindexpr -> prPrec i 4 (concatD [prt 0 bindexpr])
+   ERef bindexpr -> prPrec i 4 (concatD [doc (showString "&") , prt 0 bindexpr])
    EInt n -> prPrec i 4 (concatD [prt 0 n])
    EChar c -> prPrec i 4 (concatD [prt 0 c])
    EString str -> prPrec i 4 (concatD [prt 0 str])

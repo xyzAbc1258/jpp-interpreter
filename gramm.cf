@@ -23,7 +23,7 @@ TString. TypeIdent ::= "string";
 TVoid. TypeIdent ::= "void";
 TStruct. TypeIdent ::= Ident;
 TFunc. TypeIdent ::= "Func" "<" [TypeIdent] TypeIdent ">";
-
+TPtr. TypeIdent ::= "Ptr" "<" TypeIdent ">";
 TArray. TypeIdent ::= "Array" "<" TypeIdent ">";
 
 SFuncParam. FuncParam ::= Ref TypeIdent Ident;
@@ -48,9 +48,13 @@ SReturn. Stmt ::= "return" ";" ;
 SBreak. Stmt ::= "break" ";";
 SContinue. Stmt ::= "continue" ";"; 
 
-EBVar. BindExpr ::= Ident;
-EFldAccs. BindExpr ::= BindExpr "." Ident;
-EArrAccs. BindExpr ::= BindExpr "[" Expr "]";
+
+EDeref. BindExpr ::= "*" BindExpr;
+_. BindExpr ::= BindExpr1;
+EBVar. BindExpr1 ::= Ident;
+EFldAccs. BindExpr1 ::= BindExpr1 "." Ident;
+EArrAccs. BindExpr1 ::= BindExpr1 "[" Expr "]";
+_. BindExpr1 ::= "(" BindExpr ")";
 
 SForInit. ForInit ::= VarDecl;
 SSkip. ForInit ::= ";";
@@ -78,6 +82,7 @@ EBNeg. Expr3 ::= "!" Expr3;
 _. Expr3 ::= Expr4;
 
 EBindEx. Expr4 ::= BindExpr;
+ERef. Expr4 ::= "&" BindExpr;
 EInt. Expr4 ::= Integer;
 EChar. Expr4 ::= Char;
 EString. Expr4 ::= String;

@@ -30,6 +30,7 @@ data TypeIdent =
  | TVoid
  | TStruct Ident
  | TFunc [TypeIdent] TypeIdent
+ | TPtr TypeIdent
  | TArray TypeIdent
   deriving (Eq,Ord,Show)
 
@@ -70,7 +71,8 @@ data ElseStmt =
   deriving (Eq,Ord,Show)
 
 data BindExpr =
-   EBVar Ident
+   EDeref BindExpr
+ | EBVar Ident
  | EFldAccs BindExpr Ident
  | EArrAccs BindExpr Expr
   deriving (Eq,Ord,Show)
@@ -96,6 +98,7 @@ data Expr =
  | EGEt Expr Expr
  | EBNeg Expr
  | EBindEx BindExpr
+ | ERef BindExpr
  | EInt Integer
  | EChar Char
  | EString String

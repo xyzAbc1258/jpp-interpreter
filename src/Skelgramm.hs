@@ -45,6 +45,7 @@ transTypeIdent x = case x of
   TVoid  -> failure x
   TStruct id  -> failure x
   TFunc typeidents typeident  -> failure x
+  TPtr typeident  -> failure x
   TArray typeident  -> failure x
 
 
@@ -92,6 +93,7 @@ transElseStmt x = case x of
 
 transBindExpr :: BindExpr -> Result
 transBindExpr x = case x of
+  EDeref bindexpr  -> failure x
   EBVar id  -> failure x
   EFldAccs bindexpr id  -> failure x
   EArrAccs bindexpr expr  -> failure x
@@ -120,6 +122,7 @@ transExpr x = case x of
   EGEt expr1 expr2  -> failure x
   EBNeg expr  -> failure x
   EBindEx bindexpr  -> failure x
+  ERef bindexpr  -> failure x
   EInt n  -> failure x
   EChar c  -> failure x
   EString str  -> failure x
