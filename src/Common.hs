@@ -94,7 +94,7 @@ declareFunc::String-> [Type] -> Type -> Func -> Env -> Env
 declareFunc fName argTypes retType func (l,v,d,f,loc) = 
     (l,v, M.insert fName (TFunc argTypes retType) d, M.insert fName func f, loc)
     
-convertType::(MonadReader Env m, MonadError String m) => G.TypeIdent-> m Type
+convertType::(MonadReader Env m, MonadError String m, Functor m) => G.TypeIdent-> m Type
 convertType G.TInt = return TInt
 convertType G.TBool = return TBool
 convertType G.TChar = return TChar
@@ -114,7 +114,7 @@ convertType (G.TFunc args ret) = do
 convertType (G.TArray innerType) = TArray <$> convertType innerType
 convertType (G.TPtr inner) = TPtr <$> convertType inner
 
-convertListType::(MonadReader Env m, MonadError String m) => [G.TypeIdent] -> m [Type]
+convertListType::(MonadReader Env m, MonadError String m, Functor m) => [G.TypeIdent] -> m [Type]
 convertListType = mapM convertType
 
 getDefaultVal::(MonadState Env m) => Type -> m Value

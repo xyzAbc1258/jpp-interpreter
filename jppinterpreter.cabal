@@ -30,9 +30,9 @@ library
       src
   build-depends:
       array
-    , base >=4.7 && <5
+    , base >=4.6
     , containers
-    , mtl
+    , mtl >= 2.2.2
     , transformers
   exposed-modules:
       Absgramm
@@ -59,10 +59,10 @@ executable jppinterpreter-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       array
-    , base >=4.7 && <5
+    , base >=4.6
     , containers
     , jppinterpreter
-    , mtl
+    , mtl >= 2.2.2
     , transformers
   other-modules:
       Paths_jppinterpreter
@@ -79,7 +79,7 @@ test-suite jppinterpreter-test
     , base >=4.7 && <5
     , containers
     , jppinterpreter
-    , mtl
+    , mtl >= 2.2.2
     , transformers
   other-modules:
       Paths_jppinterpreter

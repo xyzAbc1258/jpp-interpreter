@@ -33,7 +33,7 @@ interpretProg::G.Prog -> Interpreter () ()
 interpretProg (G.DProg decls) = 
     mapM_ interpretDecl decls
 
-convertTypeLocal::(MonadReader Env m, MonadState Env m, MonadError String m)=>G.TypeIdent -> m Type
+convertTypeLocal::(MonadReader Env m, MonadState Env m, MonadError String m, Functor m)=>G.TypeIdent -> m Type
 convertTypeLocal t = do
     s <- get
     local (const s) $ convertType t
