@@ -1,0 +1,86 @@
+-- This file has been generated from package.yaml by hpack version 0.20.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: c362a7ba4e385c58e7c39eba7c0786eafed26ee8c41adf0b7003f85207efa905
+
+name:           jppinterpreter
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/jppinterpreter#readme>
+homepage:       https://github.com/githubuser/jppinterpreter#readme
+bug-reports:    https://github.com/githubuser/jppinterpreter/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2018 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    ChangeLog.md
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/jppinterpreter
+
+library
+  hs-source-dirs:
+      src
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , containers
+    , mtl
+    , transformers
+  exposed-modules:
+      Absgramm
+      Common
+      CommonTypes
+      ErrM
+      Interpreter
+      Lexgramm
+      Lib
+      Pargramm
+      Printgramm
+      Skelgramm
+      Stdlib
+      TypeCheck
+      VOperations
+  other-modules:
+      Paths_jppinterpreter
+  default-language: Haskell2010
+
+executable jppinterpreter-exe
+  main-is: Main.hs
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , containers
+    , jppinterpreter
+    , mtl
+    , transformers
+  other-modules:
+      Paths_jppinterpreter
+  default-language: Haskell2010
+
+test-suite jppinterpreter-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , containers
+    , jppinterpreter
+    , mtl
+    , transformers
+  other-modules:
+      Paths_jppinterpreter
+  default-language: Haskell2010
