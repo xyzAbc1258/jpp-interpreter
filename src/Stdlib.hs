@@ -11,11 +11,12 @@ import Data.Char
 import Data.Maybe
 import Control.Monad
 import Control.Monad.Except
+import Control.Monad.State
 
 type FuncDefinition = (String, [Type], Type, Func)
 
 stdFuncs::[FuncDefinition]
-stdFuncs = [pprint, toString, ctoi, itoc, readInt, readString, arrLength, assert]
+stdFuncs = [pprint, toString, ctoi, itoc, readInt, readString, arrLength, assert, toCharArr, fromCharArray]
 
 pprint = ("print", [TAll], TVoid, Fun $ \[x] -> liftIO (Prelude.print $ CommonTypes.print x) >> (return VVoid))
 
@@ -34,3 +35,13 @@ readString = ("readString", [], TString, Fun $ \[] -> VString <$> liftIO getLine
 arrLength = ("length", [TArray TAll], TInt, Fun $ \[VArray _ d] -> return $ VInt $ fromIntegral $ M.size d)
 
 assert = ("assert", [TBool], TVoid, Fun $ \[VBool v] -> if v then return VVoid else throwError "assert failed")
+
+toCharArr = ("toCharArray", [TString], TArray TChar, Fun $ \[VString s] -> do 
+    list <- mapM (\c -> state $ alloc (VChar c)) s
+    let zipped = zip (Prelude.map fromIntegral [0..(length s -1)]) list
+    let dict = fromList zipped
+    return $ VArray TChar dict)
+
+fromCharArray = ("fromCharArray", [TArray TChar], TString, Fun $ \[VArray _ maps] -> do
+    chars <- mapM (\(_,l) -> (\(VChar c) -> c) <$> gets (\(_,d,_,_,_)-> d!l)) $ toList maps
+    return $ VString chars)

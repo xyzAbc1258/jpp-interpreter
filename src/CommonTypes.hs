@@ -23,7 +23,10 @@ type Env = (M.Map String Location, -- zmienne lokacje
     
 emptyEnv:: Env
 emptyEnv = (M.empty, M.empty, M.empty, M.empty, 0)
-    
+
+alloc::Value -> Env ->(Location, Env)
+alloc val (l,v,d,f,loc) = 
+    (loc, (l,M.insert loc val v,d,f,loc +1))
 
 data Type = TBool
     | TInt
@@ -87,7 +90,7 @@ instance Show Value where
     show (VStruct _ m) = show $ M.toList m
     show VVoid = "void"
     show (VFunc t _) = show t
-    show (VFunc t _) = show $ TPtr t
+    show (VPtr t _) = show $ TPtr t
 
 print::Value -> String
 print (VBool b) = show b

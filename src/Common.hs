@@ -45,9 +45,6 @@ deepCopy (VStruct t d) e =
 deepCopy t e = (t,e)
 
 
-alloc::Value -> Env ->(Location, Env)
-alloc val (l,v,d,f,loc) = 
-    (loc, (l,M.insert loc val v,d,f,loc +1))
 
 declareVarLoc::String->Location->Env->Env
 declareVarLoc ident loc (l,v,d,f,lo) = 
