@@ -58,6 +58,8 @@ vEEq (VArray t1 a) (VArray t2 b) | t1 == t2 =
 vEEq (VStruct t1 a) (VStruct t2 b) | t1 == t2 = 
     vCompDicts a b
 
+vEEq (VPtr t1 l1) (VPtr t2 l2) | t1 == t2 = retBool $ l1 == l2
+
 vCompDicts::(MonadReader Env m, Ord a, Eq a) => Map a Location -> Map a Location -> m Value
 vCompDicts a b = do
     (_,vl,_,_,_) <- ask
