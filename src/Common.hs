@@ -56,11 +56,11 @@ declareVar ident val e =
     (M.insert ident nl l, v, d, f, loc)
 
 identifierInUse::String ->TypeChecker ()
-identifierInUse ident = do
-    (v,_,f,_,_) <- ask
-    case (const 1 <$> M.lookup ident v) <|> (const 1 <$> M.lookup ident f) of
-        Nothing -> return ()
-        _ -> throwError $ "Identifier '" ++ ident ++ "' is already in use"
+identifierInUse ident = return () --do
+    --(v,_,f,_,_) <- ask
+    --case (const 1 <$> M.lookup ident v) <|> (const 1 <$> M.lookup ident f) of
+    --    Nothing -> return ()
+    --    _ -> throwError $ "Identifier '" ++ ident ++ "' is already in use"
 
 getVarLocation::String->TypeChecker Location
 getVarLocation ident = do

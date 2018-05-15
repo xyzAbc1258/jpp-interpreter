@@ -72,7 +72,22 @@ module Main where
         putStrV v $ "\n[Abstract Syntax]\n\n" ++ show tree
         putStrV v $ "\n[Linearized tree]\n\n" ++ printTree tree
   
-
+  fullInterpret::ParseFun Prog -> FilePath -> IO()
+  fullInterpret p f = do
+    s <- readFile f
+    let ts = myLLexer s in case p ts of
+      Bad s    -> do putStrLn "\nParse Failed...\n"
+                     putStrLn s
+      Ok  tree -> do
+                     r <- checkType tree initialEnv
+                     case r of
+                      Left e -> putStrLn e
+                      _ -> do 
+                            r <- I.interpret tree initialEnv
+                            case r of 
+                              Left e -> putStrLnErr e
+                              _ -> return ()
+                   
   
 
   main :: IO ()
@@ -82,7 +97,7 @@ module Main where
               "-s":fs -> mapM_ (runFile 0 pProg) fs
               "-t":fs -> mapM_ (checkTypesP pProg) fs
               "-i":fs -> mapM_ (interpret pProg) fs
-              fs -> mapM_ (runFile 2 pProg) fs
+              fs -> mapM_ (fullInterpret pProg) fs
   
   
   

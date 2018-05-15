@@ -49,6 +49,15 @@ safeDA m k =
         Just r -> return r
         Nothing -> throwError $ "Couldnt find key: " ++ show k
 
+
+block::Interpreter r v -> Interpreter r v
+block interp = do
+    (d,_,_,_,_) <- get
+    r <- interp
+    modify (\(_,v,t,f,l) -> (d,v,t,f,l))
+    return r
+
+
 fixFunc::G.FuncDecl ->([Value] -> StateEnv Value) -> [Value] -> StateEnv Value
 fixFunc d@(G.SFuncDecl retT (G.Ident idt) params body) toFix args = do
     nRet <- convertTypeLocal retT
@@ -57,8 +66,7 @@ fixFunc d@(G.SFuncDecl retT (G.Ident idt) params body) toFix args = do
     let mods = Prelude.map (\(p,v) e -> let (nv,ne) = deepCopy v e in declareVar p nv ne) pairs
     let modAggr = Prelude.foldl (.) id mods
     (l,oldd,dec,funcs,loc) <- get
-    (retl, nEnv) <- gets $ alloc VVoid
-    modify (const nEnv)
+    retl <- state $ alloc VVoid
     modify (modAggr . declareVarLoc "$ret" retl . declareFunc idt nArgs nRet (Fun toFix))
     resetT (withContT (\c _ -> c None) $ interpStmts body) `runContT` return `catchError` 
         \e -> throwError $ "Error in func " ++ idt ++ ". " ++ e
@@ -183,7 +191,7 @@ interpStmt w@(G.SWhileS expr body) = fix $ \loop -> do
     (VBool v) <- interpExpr expr
     if not v then return None
      else do 
-        r <- resetT $ interpStmts body
+        r <- resetT $ block $ interpStmts body
         case r of
             Break ->return None
             Return -> shiftT $ \_ -> return Return
@@ -193,7 +201,7 @@ interpStmt (G.SForS G.SSkip boolCond bindE nValue body) = fix $ \loop -> do
     (VBool v) <- interpExpr boolCond
     if not v  then return None
       else do
-        res <- resetT $ interpStmts body
+        res <- resetT $ block $ interpStmts body
         case res of 
             Break -> return None
             Return -> shiftT $ \_ -> return Return
@@ -201,14 +209,14 @@ interpStmt (G.SForS G.SSkip boolCond bindE nValue body) = fix $ \loop -> do
             
 
 interpStmt (G.SForS (G.SForInit decl) boolCond bindE nValue body) =
-    interpStmt (G.SVarDeclS decl) >> 
+    block $ interpStmt (G.SVarDeclS decl) >> 
         interpStmt (G.SForS G.SSkip boolCond bindE nValue body)
 
 interpStmt (G.SIfS condExpr body elseStmt) = do
     (VBool cond) <- interpExpr condExpr
-    if cond then interpStmts body
+    if cond then block $ interpStmts body
     else case elseStmt of
-            G.SElse elseBody -> interpStmts elseBody
+            G.SElse elseBody -> block $ interpStmts elseBody
             G.SElseEmpty -> return None
 
 interpStmt (G.SFuncInvS fInvoke) = do
